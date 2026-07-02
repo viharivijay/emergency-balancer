@@ -1,0 +1,56 @@
+version: '3.9'
+
+services:
+  balancer:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      EB_PORT: 8080
+      EB_STRATEGY: round-robin
+      BACKEND_1_HOST: backend-1
+      BACKEND_1_PORT: 3000
+      BACKEND_2_HOST: backend-2
+      BACKEND_2_PORT: 3000
+      BACKEND_3_HOST: backend-3
+      BACKEND_3_PORT: 3000
+      LOG_LEVEL: info
+    depends_on:
+      - backend-1
+      - backend-2
+      - backend-3
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/eb/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Example backends (replace with your own services) ──────────────────────
+  backend-1:
+    image: node:20-alpine
+    command: sh -c "node -e \"require('http').createServer((req,res)=>{if(req.url==='/health')res.end('OK');else res.end('Hello from backend-1')}).listen(3000)\""
+    ports:
+      - "3001:3000"
+
+  backend-2:
+    image: node:20-alpine
+    command: sh -c "node -e \"require('http').createServer((req,res)=>{if(req.url==='/health')res.end('OK');else res.end('Hello from backend-2')}).listen(3000)\""
+    ports:
+      - "3002:3000"
+
+  backend-3:
+    image: node:20-alpine
+    command: sh -c "node -e \"require('http').createServer((req,res)=>{if(req.url==='/health')res.end('OK');else res.end('Hello from backend-3')}).listen(3000)\""
+    ports:
+      - "3003:3000"
+
+  # ── Prometheus scrape target ───────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    profiles:
+      - monitoring
