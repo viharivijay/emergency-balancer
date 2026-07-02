@@ -1,0 +1,47 @@
+# Emergency Balancer — default configuration
+# Copy to production.yml and edit as needed
+
+port: 8080
+strategy: round-robin   # round-robin | weighted | least-connections | ip-hash | random
+
+backends:
+  - host: backend-1.internal
+    port: 3000
+    weight: 10
+    zone: us-east
+
+  - host: backend-2.internal
+    port: 3000
+    weight: 10
+    zone: us-east
+
+  - host: standby.internal
+    port: 3000
+    weight: 1
+    zone: us-west
+    standby: true   # activated only when all primaries fail
+
+health:
+  interval: 5000          # ms between checks
+  timeout: 2000           # ms before a check is considered failed
+  unhealthyThreshold: 3   # consecutive failures before marking unhealthy
+  healthyThreshold: 2     # consecutive successes before marking healthy
+  path: /health
+  expectedStatus: 200
+
+circuitBreaker:
+  enabled: true
+  threshold: 50           # error rate % to open circuit
+  windowSize: 10          # sliding window size
+  resetTimeout: 30000     # ms before half-open probe
+  halfOpenRequests: 3     # probes required to close circuit
+
+rateLimit:
+  enabled: false
+  requestsPerSecond: 1000
+  burstSize: 200
+
+sticky:
+  enabled: false
+  cookieName: EB_SESSION
+  ttl: 3600               # seconds
